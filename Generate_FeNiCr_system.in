@@ -1,0 +1,92 @@
+#----------------Definition Variable------------------
+variable latC equal 3.5483740688875
+variable X equal 80
+# 60 for plane, 10 padding
+variable Y equal 80
+# 60 for plane, 10 padding
+variable Z equal 100
+# 80 for plane, 10 padding
+variable Nif equal 0.12
+variable Crf equal 0.18/(1-${Nif})
+variable Niseed equal 5689476
+variable Crseed equal 2657843
+variable yn equal 0
+variable Vseed equal 89977569
+
+# 1 - Ni
+# 2 - Fe
+# 3 - Cr
+# 4 - Vacancy
+# 5 - N
+
+#----------------Initialize Simulation----------------
+clear
+units	metal
+dimension	3
+boundary	p p p
+atom_style	atomic
+atom_modify	map yes
+
+#----------------Create Atoms------------------------
+lattice		custom ${latC} orient x 1 1 2 orient y -1 1 0 orient z -1 -1 1 &
+			basis 0 0 0 &
+			basis 0.5 0.5 0 &
+			basis 0.5 0 0.5 &
+			basis 0 0.5 0.5 &
+							&
+			basis 0.5 0 0 &
+			basis 0 0.5 0 &
+			basis 0 0 0.5 &
+			basis 0.5 0.5 0.5
+region	box	block 0 ${X} 0 ${Y} 0 ${Z} units lattice
+create_box	5	box
+create_atoms	1 box basis 5 5 basis 6 5 basis 7 5 basis 8 5
+
+set		type	1 type/fraction 2 ${Nif} ${Niseed}
+set		type	1 type/fraction 3 ${Crf} ${Crseed}
+set		type	5 type/fraction 4 ${yn}	${Vseed}
+
+group	vacancy type 5
+delete_atoms group vacancy
+
+#----------------Fixed Boundary Groups-----------------
+#region		 xrdown block 0 1 0 30 0 30
+#group            xdown region xrdown
+#region		 xrup block 29 30 0 30 0 30
+#group            xup region xrup
+#region		 yrdown block 0 30 0 1 0 30
+#group            ydown region yrdown
+#region		 yrup block 0 30 29 30 0 30
+#group            yup region yrup
+#region		 zrdown block 0 30 0 30 0 1
+#group            zdown region zrdown
+#region		 zrup block 0 30 0 30 29 30
+#group            zup region zrup
+
+#group		 boundary union xdown xup ydown yup zdown zup
+#group		 mobile subtract all boundary
+
+#----------------Interatomic Potential----------------
+pair_style eam/fs
+pair_coeff	* * ../potentials/Fe-Ni-Cr_fcc.eam.fs Fe Ni Cr Fe Fe
+#neighbor 1.0 bin
+#neigh_modify every 1 delay 0 check yes
+
+#------------------Run Minimization-------------------
+run 0
+#reset_timestep 0
+#fix 1 all box/relax iso 0.0 vmax 0.001
+#thermo 10
+#thermo_style custom step pe lx ly lz press pxx pyy pzz c_eatoms
+#min_style cg
+#minimize 1e-25 1e-25 5000 10000
+
+#minimize 1.0e-7 1.0e-8 1000 10000
+
+write_dump all atom dump_box_3.atom
+
+#dump wall all cfg 10 dump_*.cfg mass type xs ys zs
+#dump_modify wall element Ni Fe Cr
+
+#dump wall all custom 100 dump_*.lmc id mass type element xu yu zu
+#dump_modify element 1 2 3
