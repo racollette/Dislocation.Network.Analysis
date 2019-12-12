@@ -1,2 +1,2 @@
 # Dislocation.Network.Generator
-A NodeJS script to generate randomized dislocation types and orientation commands for creation in Atomsk.
+Scripts and configurations used generate randomized dislocation networks similar to additively manufactured stainless steels.
